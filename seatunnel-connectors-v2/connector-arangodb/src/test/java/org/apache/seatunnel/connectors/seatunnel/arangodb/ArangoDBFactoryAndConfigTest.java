@@ -67,11 +67,16 @@ class ArangoDBFactoryAndConfigTest {
 
     @Test
     void appliesDefaultsAndParsesCommonOptions() {
-        Map<String, Object> options = baseOptions();
-        options.put(ArangoDBOptions.QUERY_PARAMS.key(), Collections.singletonMap("tenant", "acme"));
+        Map<String, Object> sourceOptions = baseOptions();
+        sourceOptions.put(
+                ArangoDBOptions.QUERY_PARAMS.key(), Collections.singletonMap("tenant", "acme"));
 
-        ArangoDBConfig source = ArangoDBConfig.fromSource(ReadonlyConfig.fromMap(options));
-        ArangoDBConfig sink = ArangoDBConfig.fromSink(ReadonlyConfig.fromMap(options));
+        ArangoDBConfig source = ArangoDBConfig.fromSource(ReadonlyConfig.fromMap(sourceOptions));
+
+        Map<String, Object> sinkOptions = baseSinkOptions();
+        sinkOptions.put(
+                ArangoDBOptions.QUERY_PARAMS.key(), Collections.singletonMap("tenant", "acme"));
+        ArangoDBConfig sink = ArangoDBConfig.fromSink(ReadonlyConfig.fromMap(sinkOptions));
 
         assertEquals(2, source.getHosts().size());
         assertEquals(1000, source.getBatchSize());
@@ -92,14 +97,14 @@ class ArangoDBFactoryAndConfigTest {
                 ArangoDBConnectorException.class,
                 () -> ArangoDBConfig.fromSource(ReadonlyConfig.fromMap(invalidSourceBatchSize)));
 
-        options = baseOptions();
+        options = baseSinkOptions();
         options.put(ArangoDBOptions.MAX_BATCH_SIZE.key(), -1);
         Map<String, Object> invalidBatchSize = options;
         assertThrows(
                 ArangoDBConnectorException.class,
                 () -> ArangoDBConfig.fromSink(ReadonlyConfig.fromMap(invalidBatchSize)));
 
-        options = baseOptions();
+        options = baseSinkOptions();
         options.put(ArangoDBOptions.BATCH_DATA_VARIABLE.key(), "payload");
         options.put(
                 ArangoDBOptions.QUERY_PARAMS.key(),
@@ -114,7 +119,16 @@ class ArangoDBFactoryAndConfigTest {
         Map<String, Object> options = new LinkedHashMap<>();
         options.put(ArangoDBOptions.HOSTS.key(), Arrays.asList("localhost", "[2001:db8::1]:8530"));
         options.put(ArangoDBOptions.DATABASE.key(), "seatunnel");
-        options.put(ArangoDBOptions.QUERY.key(), "RETURN 1");
+        options.put(ArangoDBOptions.COLLECTION.key(), "seatunnel_docs");
+        options.put(ArangoDBOptions.QUERY.key(), "FOR d IN seatunnel_docs RETURN d");
+        return options;
+    }
+
+    private static Map<String, Object> baseSinkOptions() {
+        Map<String, Object> options = new LinkedHashMap<>();
+        options.put(ArangoDBOptions.HOSTS.key(), Arrays.asList("localhost"));
+        options.put(ArangoDBOptions.DATABASE.key(), "seatunnel");
+        options.put(ArangoDBOptions.COLLECTION.key(), "seatunnel_docs");
         return options;
     }
 }

@@ -80,6 +80,7 @@ class ArangoDBSinkWriterTest {
         Map<String, Object> options = new LinkedHashMap<>();
         options.put(ArangoDBOptions.HOSTS.key(), Collections.singletonList("localhost"));
         options.put(ArangoDBOptions.DATABASE.key(), "seatunnel");
+        options.put(ArangoDBOptions.COLLECTION.key(), "people");
         options.put(ArangoDBOptions.QUERY.key(), "FOR doc IN @rows INSERT doc INTO people");
         options.put(ArangoDBOptions.QUERY_PARAMS.key(), Collections.singletonMap("tenant", "acme"));
         options.put(ArangoDBOptions.BATCH_DATA_VARIABLE.key(), "rows");

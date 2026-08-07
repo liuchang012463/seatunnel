@@ -1,20 +1,3 @@
-/*
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements.  See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License.  You may obtain a copy of the License at
- *
- *    http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 package org.apache.seatunnel.connectors.seatunnel.arangodb.config;
 
 import org.apache.seatunnel.api.configuration.ReadonlyConfig;
@@ -27,7 +10,6 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.regex.Pattern;
 
 public final class ArangoDBConfig implements Serializable {
@@ -38,7 +20,8 @@ public final class ArangoDBConfig implements Serializable {
     private final String username;
     private final String password;
     private final String database;
-    private final String query;
+    private final String collection;
+    private String query;
     private final Map<String, String> queryParams;
     private final boolean useSsl;
     private final boolean verifyHost;
@@ -52,6 +35,7 @@ public final class ArangoDBConfig implements Serializable {
             String username,
             String password,
             String database,
+            String collection,
             String query,
             Map<String, String> queryParams,
             boolean useSsl,
@@ -64,6 +48,7 @@ public final class ArangoDBConfig implements Serializable {
         this.username = username;
         this.password = password;
         this.database = database;
+        this.collection = collection;
         this.query = query;
         this.queryParams = Collections.unmodifiableMap(new LinkedHashMap<>(queryParams));
         this.useSsl = useSsl;
@@ -75,13 +60,13 @@ public final class ArangoDBConfig implements Serializable {
     }
 
     public static ArangoDBConfig fromSource(ReadonlyConfig options) {
-        ArangoDBConfig config = from(options);
+        ArangoDBConfig config = from(options, /*requireQuery*/ true, /*requireCollection*/ false);
         requirePositive(config.batchSize, ArangoDBOptions.BATCH_SIZE.key());
         return config;
     }
 
     public static ArangoDBConfig fromSink(ReadonlyConfig options) {
-        ArangoDBConfig config = from(options);
+        ArangoDBConfig config = from(options, /*requireQuery*/ false, /*requireCollection*/ true);
         requirePositive(config.maxBatchSize, ArangoDBOptions.MAX_BATCH_SIZE.key());
         requireNonBlank(config.batchDataVariable, ArangoDBOptions.BATCH_DATA_VARIABLE.key());
         if (!BIND_VARIABLE_PATTERN.matcher(config.batchDataVariable).matches()) {
@@ -96,10 +81,26 @@ public final class ArangoDBConfig implements Serializable {
                             + config.batchDataVariable
                             + "'");
         }
+        String resolvedQuery = config.query;
+        if (resolvedQuery == null) {
+            resolvedQuery =
+                    "FOR doc IN @"
+                            + config.batchDataVariable
+                            + " INSERT doc INTO "
+                            + config.collection;
+        } else if (!resolvedQuery.contains("@" + config.batchDataVariable)) {
+            throw invalid(
+                    ArangoDBOptions.QUERY.key()
+                            + " must reference the batch variable @"
+                            + config.batchDataVariable
+                            + " when a custom AQL query is supplied");
+        }
+        config.query = resolvedQuery;
         return config;
     }
 
-    private static ArangoDBConfig from(ReadonlyConfig options) {
+    private static ArangoDBConfig from(
+            ReadonlyConfig options, boolean requireQuery, boolean requireCollection) {
         if (options == null) {
             throw invalid("configuration must not be null");
         }
@@ -114,13 +115,38 @@ public final class ArangoDBConfig implements Serializable {
         }
 
         String database = options.get(ArangoDBOptions.DATABASE);
-        String query = options.get(ArangoDBOptions.QUERY);
         requireNonBlank(database, ArangoDBOptions.DATABASE.key());
-        requireNonBlank(query, ArangoDBOptions.QUERY.key());
 
-        Optional<String> configuredUsername = options.getOptional(ArangoDBOptions.USERNAME);
-        if (configuredUsername.isPresent()) {
-            requireNonBlank(configuredUsername.get(), ArangoDBOptions.USERNAME.key());
+        String collection = options.getOptional(ArangoDBOptions.COLLECTION).orElse(null);
+        if (requireCollection) {
+            requireNonBlank(collection, ArangoDBOptions.COLLECTION.key());
+        }
+        if (collection != null && collection.trim().isEmpty()) {
+            collection = null;
+        }
+
+        String query = options.getOptional(ArangoDBOptions.QUERY).orElse(null);
+        if (query != null && query.trim().isEmpty()) {
+            query = null;
+        }
+        if (!requireQuery && query == null && collection != null) {
+            // sink: defer AQL generation to the caller (see fromSink)
+            query = null;
+        }
+        if (query == null && collection != null && requireQuery) {
+            query =
+                    "FOR d IN "
+                            + collection
+                            + " RETURN d";
+        }
+        if (requireQuery) {
+            requireNonBlank(query, ArangoDBOptions.QUERY.key());
+        }
+
+        if (options.getOptional(ArangoDBOptions.USERNAME).isPresent()) {
+            requireNonBlank(
+                    options.getOptional(ArangoDBOptions.USERNAME).get(),
+                    ArangoDBOptions.USERNAME.key());
         }
 
         int connectTimeoutMs = options.get(ArangoDBOptions.CONNECT_TIMEOUT_MS);
@@ -136,9 +162,10 @@ public final class ArangoDBConfig implements Serializable {
 
         return new ArangoDBConfig(
                 hosts,
-                configuredUsername.orElse(null),
+                options.getOptional(ArangoDBOptions.USERNAME).orElse(null),
                 options.getOptional(ArangoDBOptions.PASSWORD).orElse(null),
                 database,
+                collection,
                 query,
                 queryParams,
                 options.get(ArangoDBOptions.USE_SSL),
@@ -180,6 +207,10 @@ public final class ArangoDBConfig implements Serializable {
 
     public String getDatabase() {
         return database;
+    }
+
+    public String getCollection() {
+        return collection;
     }
 
     public String getQuery() {

@@ -1,20 +1,3 @@
-/*
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements.  See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License.  You may obtain a copy of the License at
- *
- *    http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 package org.apache.seatunnel.connectors.seatunnel.arangodb.config;
 
 import org.apache.seatunnel.connectors.seatunnel.arangodb.exception.ArangoDBConnectorErrorCode;
@@ -41,8 +24,20 @@ public final class ArangoDBHost implements Serializable {
         }
 
         String input = value.trim();
-        if (input.contains("://")) {
+
+        if (input.regionMatches(true, 0, "http://", 0, 7)) {
+            input = input.substring(7);
+        } else if (input.regionMatches(true, 0, "https://", 0, 8)) {
+            input = input.substring(8);
+        }
+
+        int schemeSep = input.indexOf("://");
+        if (schemeSep >= 0) {
             throw invalidHost(value, "URI schemes are not supported");
+        }
+
+        if (input.isEmpty()) {
+            throw invalidHost(value, "host must not be blank");
         }
 
         if (input.charAt(0) == '[') {
@@ -66,10 +61,7 @@ public final class ArangoDBHost implements Serializable {
 
         int firstColon = input.indexOf(':');
         int lastColon = input.lastIndexOf(':');
-        if (firstColon < 0) {
-            return new ArangoDBHost(input, DEFAULT_PORT);
-        }
-        if (firstColon != lastColon) {
+        if (firstColon < 0 || firstColon != lastColon) {
             return new ArangoDBHost(input, DEFAULT_PORT);
         }
 

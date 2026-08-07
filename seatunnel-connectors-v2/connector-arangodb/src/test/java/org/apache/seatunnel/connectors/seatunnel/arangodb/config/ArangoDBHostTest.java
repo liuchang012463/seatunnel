@@ -45,6 +45,10 @@ class ArangoDBHostTest {
         ArangoDBHost ipv6WithoutPort = ArangoDBHost.parse("2001:db8::2");
         assertEquals("2001:db8::2", ipv6WithoutPort.getHost());
         assertEquals(8529, ipv6WithoutPort.getPort());
+
+        ArangoDBHost schemed = ArangoDBHost.parse("http://db.example.com:8529");
+        assertEquals("db.example.com", schemed.getHost());
+        assertEquals(8529, schemed.getPort());
     }
 
     @Test
@@ -52,7 +56,7 @@ class ArangoDBHostTest {
         assertThrows(ArangoDBConnectorException.class, () -> ArangoDBHost.parse("host:not-a-port"));
         assertThrows(ArangoDBConnectorException.class, () -> ArangoDBHost.parse("[::1"));
         assertThrows(ArangoDBConnectorException.class, () -> ArangoDBHost.parse("host:70000"));
-        assertThrows(
-                ArangoDBConnectorException.class, () -> ArangoDBHost.parse("http://host:8529"));
+        assertThrows(ArangoDBConnectorException.class, () -> ArangoDBHost.parse("ftp://host:8529"));
+        assertThrows(ArangoDBConnectorException.class, () -> ArangoDBHost.parse("http://"));
     }
 }
