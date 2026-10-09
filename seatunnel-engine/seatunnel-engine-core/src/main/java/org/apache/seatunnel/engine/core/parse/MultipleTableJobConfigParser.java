@@ -420,6 +420,7 @@ public class MultipleTableJobConfigParser {
 
         Set<URL> factoryUrls = new HashSet<>();
         factoryUrls.addAll(getSourcePluginJarPaths(sourceConfig));
+        factoryUrls.addAll(getDriverJarPaths(sourceConfig));
 
         List<Tuple2<CatalogTable, Action>> actions = new ArrayList<>();
         long id = idGenerator.getNextId();
@@ -653,6 +654,7 @@ public class MultipleTableJobConfigParser {
         Set<URL> jarUrls = new HashSet<>();
         if (!DryRunSampleConfig.isEnabled(jobConfig.getEnvOptions())) {
             jarUrls.addAll(getSinkPluginJarPaths(sinkConfig));
+            jarUrls.addAll(getDriverJarPaths(sinkConfig));
         }
         List<SinkAction<?, ?, ?, ?>> sinkActions = new ArrayList<>();
         int failedTableStartIndex = failedTables.size();
@@ -946,6 +948,16 @@ public class MultipleTableJobConfigParser {
         List<URL> pluginJarPaths =
                 transformPluginDiscovery.getPluginJarPaths(Lists.newArrayList(pluginIdentifier));
         return pluginJarPaths;
+    }
+
+    /**
+     * Driver jars declared by a plugin config through {@code driver_location}. They belong to the
+     * action jar urls so the task runs with the driver the job pinned, not with the driver that
+     * happens to be visible to the server.
+     */
+    private List<URL> getDriverJarPaths(Config pluginConfig) {
+        return JobPluginClasspathHelper.driverJarsFromPluginConfigs(
+                Collections.singletonList(pluginConfig));
     }
 
     private List<URL> getSinkPluginJarPaths(Config sinkConfig) {

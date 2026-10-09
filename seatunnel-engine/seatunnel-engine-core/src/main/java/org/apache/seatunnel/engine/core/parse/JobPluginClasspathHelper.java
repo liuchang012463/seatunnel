@@ -32,15 +32,26 @@ import org.apache.seatunnel.plugin.discovery.seatunnel.SeaTunnelSourcePluginDisc
 import org.apache.seatunnel.plugin.discovery.seatunnel.SeaTunnelTransformPluginDiscovery;
 
 import java.net.MalformedURLException;
+import java.net.URI;
 import java.net.URL;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public final class JobPluginClasspathHelper {
+
+    /**
+     * Driver jars declared by a JDBC plugin config, see {@code JdbcCommonOptions.DRIVER_LOCATION}.
+     */
+    public static final String DRIVER_LOCATION_KEY = "driver_location";
+
+    private static final String JAR_SEPARATOR = ";";
 
     private JobPluginClasspathHelper() {}
 
@@ -69,6 +80,48 @@ public final class JobPluginClasspathHelper {
     }
 
     /**
+     * Driver JAR URLs declared by {@code driver_location} in the given plugin configs. Attaching
+     * them to the job classloader is what lets a job pin its own JDBC driver instead of relying on
+     * the driver that happens to be visible to the server.
+     *
+     * @param configs raw plugin {@link Config} blocks
+     * @return resolved driver JAR URLs, in declaration order, without duplicates (may be empty)
+     */
+    public static List<URL> driverJarsFromPluginConfigs(List<? extends Config> configs) {
+        if (configs == null || configs.isEmpty()) {
+            return new ArrayList<>();
+        }
+        Set<URL> urls = new LinkedHashSet<>();
+        for (Config config : configs) {
+            if (config == null || !config.hasPath(DRIVER_LOCATION_KEY)) {
+                continue;
+            }
+            String driverLocation = config.getString(DRIVER_LOCATION_KEY);
+            if (driverLocation == null) {
+                continue;
+            }
+            for (String location : driverLocation.split(JAR_SEPARATOR)) {
+                String trimmed = location.trim();
+                if (!trimmed.isEmpty()) {
+                    urls.add(toJarUrl(trimmed));
+                }
+            }
+        }
+        return new ArrayList<>(urls);
+    }
+
+    private static URL toJarUrl(String location) {
+        try {
+            // A plain absolute path is accepted next to a file URI, matching the way the driver
+            // location is written in the job config.
+            URI uri = location.contains("://") ? URI.create(location) : Paths.get(location).toUri();
+            return uri.toURL();
+        } catch (MalformedURLException | IllegalArgumentException e) {
+            throw new SeaTunnelEngineException("the uri of driver jar illegal:" + location, e);
+        }
+    }
+
+    /**
      * Connector JAR URLs for the given plugin configs, plus {@code commonPluginJars}, matching the
      * discovery rules used when building the pipeline:
      *
@@ -81,7 +134,8 @@ public final class JobPluginClasspathHelper {
      * @param configs list of raw plugin {@link Config} blocks
      * @param type the plugin type (SOURCE, TRANSFORM, or SINK)
      * @param commonPluginJars third-party jars already resolved from env; appended to the result
-     * @return mutable list of connector JAR URLs (connector jars first, then common jars)
+     * @return mutable list of connector JAR URLs (connector jars, then declared driver jars, then
+     *     common jars)
      */
     public static List<URL> connectorJarList(
             List<? extends Config> configs, PluginType type, List<URL> commonPluginJars) {
@@ -114,6 +168,9 @@ public final class JobPluginClasspathHelper {
             default:
                 throw new IllegalArgumentException("Unsupported plugin type: " + type);
         }
+        // Driver jars declared by the plugins come before env jars: the more specific declaration
+        // wins when the child-first classloader resolves the driver class name.
+        jarPaths.addAll(driverJarsFromPluginConfigs(configs));
         jarPaths.addAll(commonPluginJars);
         return jarPaths;
     }

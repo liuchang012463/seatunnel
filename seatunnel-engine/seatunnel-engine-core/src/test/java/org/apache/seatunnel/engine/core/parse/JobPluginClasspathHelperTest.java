@@ -17,6 +17,9 @@
 
 package org.apache.seatunnel.engine.core.parse;
 
+import org.apache.seatunnel.shade.com.typesafe.config.Config;
+import org.apache.seatunnel.shade.com.typesafe.config.ConfigFactory;
+
 import org.apache.seatunnel.api.configuration.ReadonlyConfig;
 import org.apache.seatunnel.common.constants.PluginType;
 
@@ -32,6 +35,69 @@ import java.util.Collections;
 import java.util.List;
 
 class JobPluginClasspathHelperTest {
+
+    @Test
+    void driverJarsFromPluginConfigs_readsPathsAndFileUris(@TempDir Path dir) throws Exception {
+        Path plainPath = Files.createFile(dir.resolve("vastbase.jar"));
+        Path uriPath = Files.createFile(dir.resolve("postgresql.jar"));
+        Config config =
+                ConfigFactory.parseString(
+                        "driver_location = \""
+                                + plainPath
+                                + ";"
+                                + uriPath.toUri()
+                                + "\"");
+
+        List<URL> urls =
+                JobPluginClasspathHelper.driverJarsFromPluginConfigs(Arrays.asList(config));
+
+        Assertions.assertEquals(
+                Arrays.asList(plainPath.toUri().toURL(), uriPath.toUri().toURL()), urls);
+    }
+
+    @Test
+    void driverJarsFromPluginConfigs_ignoresConfigsWithoutDriverLocation(@TempDir Path dir)
+            throws Exception {
+        Config withoutDriver =
+                ConfigFactory.parseString("url = \"jdbc:postgresql://localhost:5432/demo\"");
+        Config withBlankDriver = ConfigFactory.parseString("driver_location = \" ; \"");
+        Path driverJar = Files.createFile(dir.resolve("driver.jar"));
+        Config withDriver =
+                ConfigFactory.parseString("driver_location = \"" + driverJar + "\"");
+
+        Assertions.assertTrue(
+                JobPluginClasspathHelper.driverJarsFromPluginConfigs(
+                                Arrays.asList(withoutDriver, withBlankDriver))
+                        .isEmpty());
+        Assertions.assertEquals(
+                1,
+                JobPluginClasspathHelper.driverJarsFromPluginConfigs(Arrays.asList(withDriver))
+                        .size());
+    }
+
+    @Test
+    void connectorJarList_attachesDriverJarsBeforeCommonJars(@TempDir Path dir) throws Exception {
+        Path driver = Files.createFile(dir.resolve("driver.jar"));
+        Path common = Files.createFile(dir.resolve("common.jar"));
+        Config config =
+                ConfigFactory.parseString(
+                        "plugin_name = \"FakeTransform\"\n"
+                                + "driver_location = \""
+                                + driver
+                                + "\"");
+        URL commonUrl = common.toUri().toURL();
+
+        List<URL> urls =
+                JobPluginClasspathHelper.connectorJarList(
+                        Collections.singletonList(config),
+                        PluginType.TRANSFORM,
+                        Collections.singletonList(commonUrl));
+
+        Assertions.assertEquals(
+                Arrays.asList(driver.toUri().toURL(), commonUrl),
+                urls,
+                "the driver jar declared by the plugin must precede env jars");
+    }
 
     @Test
     void thirdPartyJarsFromEnv_emptyReadonlyConfig() {
