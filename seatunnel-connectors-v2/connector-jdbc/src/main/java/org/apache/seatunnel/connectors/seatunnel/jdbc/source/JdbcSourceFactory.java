@@ -109,6 +109,7 @@ public class JdbcSourceFactory implements TableSourceFactory, SupportSourceDryRu
                         JdbcSourceOptions.DECIMAL_TYPE_NARROWING,
                         JdbcSourceOptions.INT_TYPE_NARROWING,
                         JdbcSourceOptions.DIALECT,
+                        JdbcSourceOptions.DRIVER_LOCATION,
                         JdbcSourceOptions.ENABLE_CONCURRENT_READ)
                 .build();
     }

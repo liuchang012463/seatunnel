@@ -42,6 +42,20 @@ public class JdbcCommonOptions {
     public static final Option<String> DRIVER =
             Options.key("driver").stringType().noDefaultValue().withDescription("driver");
 
+    /**
+     * Jars of the driver named by {@link #DRIVER}, separated by {@code ;}.
+     *
+     * <p>The jars are attached to the job's own classloader, which is child-first over them, so a
+     * driver declared here wins over a driver with the same class name that is already registered
+     * globally. That allows two drivers sharing one class name (PostgreSQL-compatible databases
+     * ship a repackaged {@code org.postgresql.Driver}) to be used by different jobs.
+     */
+    public static final Option<String> DRIVER_LOCATION =
+            Options.key("driver_location")
+                    .stringType()
+                    .noDefaultValue()
+                    .withDescription("jars of the jdbc driver, separated by ';'");
+
     public static final Option<String> SCHEMA =
             Options.key("schema")
                     .stringType()

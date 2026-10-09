@@ -229,7 +229,8 @@ public class JdbcSinkFactory implements TableSinkFactory, SupportSinkDryRunValid
                         JdbcSinkOptions.TABLE_PREFIX,
                         JdbcSinkOptions.TABLE_SUFFIX,
                         SinkConnectorCommonOptions.MULTI_TABLE_SINK_REPLICA,
-                        JdbcSinkOptions.DIALECT)
+                        JdbcSinkOptions.DIALECT,
+                        JdbcSinkOptions.DRIVER_LOCATION)
                 .optional(
                         SinkConnectorCommonOptions.TABLE_OPTIONS,
                         Conditions.extension(

@@ -17,6 +17,8 @@
 
 package org.apache.seatunnel.connectors.seatunnel.jdbc.internal.connection;
 
+import org.apache.seatunnel.shade.com.google.common.annotations.VisibleForTesting;
+
 import org.apache.seatunnel.connectors.seatunnel.jdbc.config.JdbcConnectionConfig;
 import org.apache.seatunnel.connectors.seatunnel.jdbc.exception.JdbcConnectorErrorCode;
 import org.apache.seatunnel.connectors.seatunnel.jdbc.exception.JdbcConnectorException;
@@ -63,7 +65,45 @@ public class SimpleJdbcConnectionProvider implements JdbcConnectionProvider, Ser
     }
 
     private static Driver loadDriver(String driverName) throws ClassNotFoundException {
+        return loadDriver(driverName, Thread.currentThread().getContextClassLoader());
+    }
+
+    /**
+     * Loads the driver, preferring the classloaders that carry the job's own jars.
+     *
+     * <p>A job declares its JDBC driver jars through {@code driver_location} or {@code env.jars};
+     * they are attached to the job's child-first classloaders (one for source and transform, one for
+     * sink). The classloader of the running task must win over {@link DriverManager}: the registry is
+     * keyed by class <em>name</em>, so when two drivers share one name (PostgreSQL-compatible
+     * databases ship a repackaged {@code org.postgresql.Driver}) only one of them can be registered,
+     * and consulting the registry first would silently connect with the wrong driver.
+     *
+     * @param driverName driver class name
+     * @param taskClassLoader classloader of the running task, may be null
+     * @return the driver to use
+     */
+    @VisibleForTesting
+    static Driver loadDriver(String driverName, ClassLoader taskClassLoader)
+            throws ClassNotFoundException {
         checkNotNull(driverName);
+
+        // The task classloader first: it is the one that owns the driver jars of this job. The
+        // classloader of this connector is the fallback, because source and sink run with separate
+        // classloaders and this class may have been loaded by the other one.
+        for (ClassLoader candidate :
+                new ClassLoader[] {
+                    taskClassLoader, SimpleJdbcConnectionProvider.class.getClassLoader()
+                }) {
+            if (candidate == null) {
+                continue;
+            }
+            try {
+                return createDriver(Class.forName(driverName, true, candidate), driverName);
+            } catch (ClassNotFoundException e) {
+                LOG.debug("Driver {} is not visible to {}", driverName, candidate, e);
+            }
+        }
+
         Enumeration<Driver> drivers = DriverManager.getDrivers();
         while (drivers.hasMoreElements()) {
             Driver driver = drivers.nextElement();
@@ -77,6 +117,10 @@ public class SimpleJdbcConnectionProvider implements JdbcConnectionProvider, Ser
         // * driver is not installed as a service provider.
         Class<?> clazz =
                 Class.forName(driverName, true, Thread.currentThread().getContextClassLoader());
+        return createDriver(clazz, driverName);
+    }
+
+    private static Driver createDriver(Class<?> clazz, String driverName) {
         try {
             return (Driver) clazz.getDeclaredConstructor().newInstance();
         } catch (Exception ex) {
