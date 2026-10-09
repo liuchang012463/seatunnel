@@ -88,6 +88,12 @@ public class ServerConnectorPackageClient {
         boolean success = false;
         try {
             if (!storageFile.exists()) {
+                // A member that receives a jar for the first time has no storage directory yet,
+                // for example the driver jar directory of a job.
+                File parent = storageFile.getParentFile();
+                if (parent != null && !parent.exists() && !parent.mkdirs() && !parent.exists()) {
+                    throw new IOException("Cannot create the storage directory " + parent);
+                }
                 try (FileOutputStream fos = new FileOutputStream(storageFile)) {
                     fos.write(connectorJarByteData);
                 }
@@ -102,7 +108,8 @@ public class ServerConnectorPackageClient {
         } catch (IOException ioe) {
             LOGGER.warning(
                     String.format(
-                            "The connector jar package file %s storage failed.", storageFile));
+                            "The connector jar package file %s storage failed.", storageFile),
+                    ioe);
         } finally {
             if (!success) {
                 // delete storageFile from a failed download
