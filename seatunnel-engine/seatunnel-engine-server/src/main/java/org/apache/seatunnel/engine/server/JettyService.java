@@ -53,6 +53,7 @@ import org.apache.seatunnel.engine.server.rest.servlet.SubmitJobsServlet;
 import org.apache.seatunnel.engine.server.rest.servlet.SystemMonitoringServlet;
 import org.apache.seatunnel.engine.server.rest.servlet.ThreadDumpServlet;
 import org.apache.seatunnel.engine.server.rest.servlet.UpdateTagsServlet;
+import org.apache.seatunnel.engine.server.rest.servlet.UploadDriverJarServlet;
 import org.apache.seatunnel.engine.server.rest.servlet.WorkerResourceServlet;
 
 import com.hazelcast.spi.impl.NodeEngineImpl;
@@ -95,6 +96,7 @@ import static org.apache.seatunnel.engine.server.rest.RestConstant.REST_URL_SUBM
 import static org.apache.seatunnel.engine.server.rest.RestConstant.REST_URL_SYSTEM_MONITORING_INFORMATION;
 import static org.apache.seatunnel.engine.server.rest.RestConstant.REST_URL_THREAD_DUMP;
 import static org.apache.seatunnel.engine.server.rest.RestConstant.REST_URL_UPDATE_TAGS;
+import static org.apache.seatunnel.engine.server.rest.RestConstant.REST_URL_UPLOAD_DRIVER_JAR;
 import static org.apache.seatunnel.engine.server.rest.RestConstant.REST_URL_WORKER_RESOURCES;
 
 /** The Jetty service for SeaTunnel engine server. */
@@ -207,6 +209,8 @@ public class JettyService {
         ServletHolder submitJobHolder = new ServletHolder(new SubmitJobServlet(nodeEngine));
         ServletHolder submitJobByUploadFileHolder =
                 new ServletHolder(new SubmitJobByUploadFileServlet(nodeEngine));
+        ServletHolder uploadDriverJarHolder =
+                new ServletHolder(new UploadDriverJarServlet(nodeEngine));
 
         ServletHolder submitJobsHolder = new ServletHolder(new SubmitJobsServlet(nodeEngine));
         ServletHolder stopJobHolder = new ServletHolder(new StopJobServlet(nodeEngine));
@@ -253,6 +257,7 @@ public class JettyService {
         submitJobByUploadFileHolder.getRegistration().setMultipartConfig(multipartConfigElement);
         context.addServlet(
                 submitJobByUploadFileHolder, convertUrlToPath(REST_URL_SUBMIT_JOB_BY_UPLOAD_FILE));
+        context.addServlet(uploadDriverJarHolder, convertUrlToPath(REST_URL_UPLOAD_DRIVER_JAR));
         context.addServlet(submitJobHolder, convertUrlToPath(REST_URL_SUBMIT_JOB));
         context.addServlet(submitJobsHolder, convertUrlToPath(REST_URL_SUBMIT_JOBS));
         context.addServlet(stopJobHolder, convertUrlToPath(REST_URL_STOP_JOB));

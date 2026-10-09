@@ -101,6 +101,9 @@ public class RestConstant {
 
     public static final String REST_URL_SUBMIT_JOB_BY_UPLOAD_FILE = "/submit-job/upload";
 
+    /** Uploads a JDBC driver jar and pushes it to every cluster member. */
+    public static final String REST_URL_UPLOAD_DRIVER_JAR = "/driver-jar/upload";
+
     public static final String REST_URL_SUBMIT_JOBS = "/submit-jobs";
     public static final String REST_URL_STOP_JOB = "/stop-job";
     public static final String REST_URL_STOP_JOBS = "/stop-jobs";

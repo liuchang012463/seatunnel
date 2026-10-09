@@ -23,6 +23,7 @@ import org.apache.seatunnel.engine.server.execution.TaskLocation;
 import org.apache.seatunnel.engine.server.task.Progress;
 import org.apache.seatunnel.engine.server.task.TaskGroupImmutableInformation;
 import org.apache.seatunnel.engine.server.task.operation.CancelTaskOperation;
+import org.apache.seatunnel.engine.server.task.operation.CheckConnectorJarExistsOperation;
 import org.apache.seatunnel.engine.server.task.operation.CheckTaskGroupIsExecutingOperation;
 import org.apache.seatunnel.engine.server.task.operation.CleanTaskGroupContextOperation;
 import org.apache.seatunnel.engine.server.task.operation.DeleteConnectorJarInExecutionNode;
@@ -110,6 +111,8 @@ public class TaskDataSerializerHook implements DataSerializerHook {
 
     public static final int REPORT_METRICS_OPERATION = 28;
 
+    public static final int CHECK_CONNECTOR_JAR_EXISTS_OPERATION = 29;
+
     public static final int FACTORY_ID =
             FactoryIdHelper.getFactoryId(
                     SeaTunnelFactoryIdConstant.SEATUNNEL_TASK_DATA_SERIALIZER_FACTORY,
@@ -186,6 +189,8 @@ public class TaskDataSerializerHook implements DataSerializerHook {
                     return new CleanLogOperation();
                 case REPORT_METRICS_OPERATION:
                     return new ReportMetricsOperation();
+                case CHECK_CONNECTOR_JAR_EXISTS_OPERATION:
+                    return new CheckConnectorJarExistsOperation();
                 default:
                     throw new IllegalArgumentException("Unknown type id " + typeId);
             }
