@@ -33,6 +33,8 @@ Place the JDBC driver in `${SEATUNNEL_HOME}/plugins/Jdbc/lib/` on every node tha
 
 Place the JDBC driver in `${SEATUNNEL_HOME}/lib/` on every SeaTunnel node, then restart the affected SeaTunnel processes so the driver is loaded.
 
+A job can also declare its own driver jars with [`driver_location`](#driver_location-string), which is loaded by the job's own class loader without a restart. Prefer it when two databases share one driver class name, for example PostgreSQL-compatible databases that ship a repackaged `org.postgresql.Driver`: a driver in `lib/` is shared by every job, so only one of the two can be used, while `driver_location` pins the driver per job.
+
 See the [driver reference](#driver-reference) for common driver class names and download locations.
 
 ## Choose a write mode
@@ -166,6 +168,7 @@ Exactly-once delivery uses XA transactions and therefore requires XA support fro
 |-------------------------------------------|---------|----------|------------------------------|
 | url                                       | String  | Yes      | -                            |
 | driver                                    | String  | Yes      | -                            |
+| driver_location                           | String  | No       | -                            |
 | username                                  | String  | No       | -                            |
 | password                                  | String  | No       | -                            |
 | query                                     | String  | No       | -                            |
@@ -212,6 +215,27 @@ Exactly-once delivery uses XA transactions and therefore requires XA support fro
 ### driver [string]
 
 The jdbc class name used to connect to the remote data source, if you use MySQL the value is `com.mysql.cj.jdbc.Driver`.
+
+### driver_location [string]
+
+The jars of the driver named by `driver`, separated by `;`. The jars are attached to the job's own class loader and take precedence over a driver with the same class name that is already visible to the SeaTunnel process, so a job can pin its driver without changing `${SEATUNNEL_HOME}/lib/` or restarting the cluster. Every node that runs the job must expose the jar at the same path; a missing jar fails the job with the node that cannot read it.
+
+Use it when two databases share one driver class name, for example PostgreSQL-compatible databases that ship a repackaged `org.postgresql.Driver`:
+
+```hocon
+sink {
+  Jdbc {
+    url = "jdbc:postgresql://localhost:5432/demo"
+    driver = "org.postgresql.Driver"
+    driver_location = "/opt/seatunnel/jdbc-drivers/vastbase.jar"
+    username = "postgres"
+    password = "postgres"
+    database = "demo"
+    table = "public.orders"
+    generate_sink_sql = true
+  }
+}
+```
 
 ### username [string]
 

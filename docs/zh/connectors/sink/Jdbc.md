@@ -33,6 +33,8 @@ sh bin/install-plugin.sh
 
 把 JDBC 驱动放到每个 SeaTunnel 节点的 `${SEATUNNEL_HOME}/lib/`，然后重启受影响的 SeaTunnel 进程，让驱动进入类路径。
 
+任务也可以用 `driver_location` 声明自己的驱动 jar，它由任务自身的类加载器加载，不需要重启集群。当两个数据库共用同一个驱动类名时（例如兼容 PostgreSQL 的数据库自带重打包的 `org.postgresql.Driver`）应优先使用：放在 `lib/` 的驱动由所有任务共享，两者只能生效一个，而 `driver_location` 可以按任务固定驱动。
+
 常用驱动类名和下载地址见[驱动参考](#驱动参考)。
 
 ## 选择写入模式
@@ -165,6 +167,7 @@ Exactly-once 依赖 XA 事务，因此数据库和 JDBC 驱动都必须支持 XA
 |-------------------------------------------|---------|------|------------------------------|
 | url                                       | String  | 是    | -                            |
 | driver                                    | String  | 是    | -                            |
+| driver_location                           | String  | 否    | -                            |
 | username                                  | String  | 否    | -                            |
 | password                                  | String  | 否    | -                            |
 | query                                     | String  | 否    | -                            |
@@ -210,6 +213,27 @@ Exactly-once 依赖 XA 事务，因此数据库和 JDBC 驱动都必须支持 XA
 ### driver [string]
 
 用于连接远程数据源的 jdbc 类名，如果使用MySQL，则值为`com.mysql.cj.jdbc.Driver`
+
+### driver_location [string]
+
+`driver` 对应的驱动 jar，多个用 `;` 分隔。这些 jar 由任务自身的类加载器加载，优先于 SeaTunnel 进程已可见的同名驱动，因此任务可以固定自己的驱动，无需改动 `${SEATUNNEL_HOME}/lib/` 或重启集群。运行该任务的每个节点都必须在相同路径上提供该 jar，缺失时任务会报出读不到 jar 的节点。
+
+当两个数据库共用同一个驱动类名时（例如兼容 PostgreSQL 的数据库自带重打包的 `org.postgresql.Driver`）使用：
+
+```hocon
+sink {
+  Jdbc {
+    url = "jdbc:postgresql://localhost:5432/demo"
+    driver = "org.postgresql.Driver"
+    driver_location = "/opt/seatunnel/jdbc-drivers/vastbase.jar"
+    username = "postgres"
+    password = "postgres"
+    database = "demo"
+    table = "public.orders"
+    generate_sink_sql = true
+  }
+}
+```
 
 ### username [string]
 
