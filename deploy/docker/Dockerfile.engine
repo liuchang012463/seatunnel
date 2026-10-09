@@ -1,0 +1,12 @@
+# 基于官方 3.0.0 镜像重建，只替换本次驱动隔离改动涉及的两个产物：
+#   connectors/connector-jdbc-3.0.0.jar  —— 新增 driver_location 选项，并按任务类加载器解析驱动
+#   starter/seatunnel-starter.jar        —— 解析/运行期把 driver_location 挂到任务类加载器，
+#                                           并新增 /driver-jar/upload 分发端点
+# 基础镜像与已部署栈一致（Debian 11 + OpenJDK 8，arm64）。
+ARG BASE_IMAGE=apache/seatunnel:3.0.0
+FROM ${BASE_IMAGE}
+
+COPY connector-jdbc-3.0.0.jar /opt/seatunnel/connectors/connector-jdbc-3.0.0.jar
+COPY seatunnel-starter.jar /opt/seatunnel/starter/seatunnel-starter.jar
+
+WORKDIR /opt/seatunnel
