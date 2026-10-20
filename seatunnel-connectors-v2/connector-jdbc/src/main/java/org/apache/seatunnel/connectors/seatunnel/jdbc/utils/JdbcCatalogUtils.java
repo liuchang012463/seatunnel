@@ -47,6 +47,7 @@ import org.apache.seatunnel.connectors.seatunnel.jdbc.config.JdbcSourceTableConf
 import org.apache.seatunnel.connectors.seatunnel.jdbc.internal.connection.JdbcConnectionProvider;
 import org.apache.seatunnel.connectors.seatunnel.jdbc.internal.dialect.JdbcDialect;
 import org.apache.seatunnel.connectors.seatunnel.jdbc.internal.dialect.JdbcDialectLoader;
+import org.apache.seatunnel.connectors.seatunnel.jdbc.internal.dialect.duckdb.DuckDbJdbcConnectionProvider;
 import org.apache.seatunnel.connectors.seatunnel.jdbc.source.JdbcSourceTable;
 
 import lombok.extern.slf4j.Slf4j;
@@ -508,6 +509,14 @@ public class JdbcCatalogUtils {
         catalogConfig.put(JdbcCommonOptions.INT_TYPE_NARROWING.key(), config.isIntTypeNarrowing());
         catalogConfig.put(
                 JdbcCommonOptions.HANDLE_BLOB_AS_STRING.key(), config.isHandleBlobAsString());
+        Optional.ofNullable(config.getProperties())
+                .map(props -> props.get(DuckDbJdbcConnectionProvider.SESSION_INIT_SQL_PROPERTY))
+                .filter(StringUtils::isNotBlank)
+                .ifPresent(
+                        value ->
+                                catalogConfig.put(
+                                        DuckDbJdbcConnectionProvider.SESSION_INIT_SQL_PROPERTY,
+                                        value));
         return ReadonlyConfig.fromMap(catalogConfig);
     }
 

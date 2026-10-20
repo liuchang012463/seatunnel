@@ -29,9 +29,11 @@ import org.apache.seatunnel.api.table.converter.BasicTypeDefine;
 import org.apache.seatunnel.common.utils.JdbcUrlUtil;
 import org.apache.seatunnel.connectors.seatunnel.jdbc.catalog.AbstractJdbcCatalog;
 import org.apache.seatunnel.connectors.seatunnel.jdbc.internal.dialect.duckdb.DuckDBTypeConverter;
+import org.apache.seatunnel.connectors.seatunnel.jdbc.internal.dialect.duckdb.DuckDbSessionInitSql;
 
 import lombok.extern.slf4j.Slf4j;
 
+import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.Driver;
 import java.sql.DriverManager;
@@ -56,6 +58,7 @@ import java.util.regex.Pattern;
 public class DuckDBCatalog extends AbstractJdbcCatalog {
 
     private final DuckDBTypeConverter typeConverter;
+    private final String sessionInitSql;
     private static final String DEFAULT_DATABASE_NAME = "default";
     private static final String SELECT_COLUMNS_SQL_TEMPLATE =
             "SELECT\n"
@@ -87,8 +90,17 @@ public class DuckDBCatalog extends AbstractJdbcCatalog {
                     + "ORDER BY c.ordinal_position;\n";
 
     public DuckDBCatalog(String catalogName, JdbcUrlUtil.UrlInfo urlInfo, String defaultSchema) {
+        this(catalogName, urlInfo, defaultSchema, null);
+    }
+
+    public DuckDBCatalog(
+            String catalogName,
+            JdbcUrlUtil.UrlInfo urlInfo,
+            String defaultSchema,
+            String sessionInitSql) {
         super(catalogName, "duckdb", "", urlInfo, defaultSchema, "org.duckdb.DuckDBDriver");
         this.typeConverter = new DuckDBTypeConverter();
+        this.sessionInitSql = sessionInitSql;
     }
 
     @Override
@@ -97,34 +109,49 @@ public class DuckDBCatalog extends AbstractJdbcCatalog {
             return connectionMap.get(url);
         }
         Properties info = getConnectionProperties();
-        if (driverClass != null) {
-            log.info("try to find driver {}", driverClass);
-            Enumeration<Driver> drivers = DriverManager.getDrivers();
+        Path initSqlFile = null;
+        String effectiveUrl = url;
+        if (StringUtils.isNotBlank(sessionInitSql)) {
             try {
-                // Driver Manager may load the wrong driver, prioritize finding the driver by class
-                // name
-                while (drivers.hasMoreElements()) {
-                    Driver driver = drivers.nextElement();
-                    if (StringUtils.equals(driver.getClass().getName(), driverClass)) {
-                        try {
-                            Connection connection = driver.connect(url, info);
-                            connectionMap.put(url, connection);
-                            return connection;
-                        } catch (Exception e) {
-                            log.info("try connector failed", e);
-                        }
-                    }
-                }
-            } catch (Exception e) {
-                log.info("find driver error, back to DriverManager.getConnection", e);
+                initSqlFile = DuckDbSessionInitSql.writeSessionInitSql(sessionInitSql);
+                effectiveUrl = DuckDbSessionInitSql.withSessionInitSqlFile(url, initSqlFile);
+            } catch (SQLException e) {
+                throw new CatalogException("Cannot prepare the DuckDB session init SQL", e);
             }
         }
         try {
-            Connection connection = DriverManager.getConnection(url, info);
-            connectionMap.put(url, connection);
-            return connection;
-        } catch (SQLException e) {
-            throw new CatalogException("Failed connecting to the configured JDBC URL via JDBC.", e);
+            if (driverClass != null) {
+                log.info("try to find driver {}", driverClass);
+                Enumeration<Driver> drivers = DriverManager.getDrivers();
+                try {
+                    // Driver Manager may load the wrong driver, prioritize finding the driver by
+                    // class name
+                    while (drivers.hasMoreElements()) {
+                        Driver driver = drivers.nextElement();
+                        if (StringUtils.equals(driver.getClass().getName(), driverClass)) {
+                            try {
+                                Connection connection = driver.connect(effectiveUrl, info);
+                                connectionMap.put(url, connection);
+                                return connection;
+                            } catch (Exception e) {
+                                log.info("try connector failed", e);
+                            }
+                        }
+                    }
+                } catch (Exception e) {
+                    log.info("find driver error, back to DriverManager.getConnection", e);
+                }
+            }
+            try {
+                Connection connection = DriverManager.getConnection(effectiveUrl, info);
+                connectionMap.put(url, connection);
+                return connection;
+            } catch (SQLException e) {
+                throw new CatalogException(
+                        "Failed connecting to the configured JDBC URL via JDBC.", e);
+            }
+        } finally {
+            DuckDbSessionInitSql.deleteQuietly(initSqlFile);
         }
     }
 

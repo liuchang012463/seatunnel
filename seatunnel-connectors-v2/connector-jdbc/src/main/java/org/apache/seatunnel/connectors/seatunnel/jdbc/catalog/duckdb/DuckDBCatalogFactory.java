@@ -25,6 +25,7 @@ import org.apache.seatunnel.api.table.factory.Factory;
 import org.apache.seatunnel.common.utils.JdbcUrlUtil;
 import org.apache.seatunnel.connectors.seatunnel.jdbc.config.JdbcCommonOptions;
 import org.apache.seatunnel.connectors.seatunnel.jdbc.internal.dialect.DatabaseIdentifier;
+import org.apache.seatunnel.connectors.seatunnel.jdbc.internal.dialect.duckdb.DuckDbJdbcConnectionProvider;
 
 import com.google.auto.service.AutoService;
 
@@ -45,7 +46,10 @@ public class DuckDBCatalogFactory implements CatalogFactory {
         String defaultSchema =
                 config.getOptional(JdbcCommonOptions.SCHEMA).orElse(DEFAULT_SCHEMA_NAME);
         JdbcUrlUtil.UrlInfo urlInfo = DuckDBURLParser.parse(url);
-        return new DuckDBCatalog(catalogName, urlInfo, defaultSchema);
+        String sessionInitSql =
+                config.getOptional(DuckDbJdbcConnectionProvider.SESSION_INIT_SQL_OPTION)
+                        .orElse(null);
+        return new DuckDBCatalog(catalogName, urlInfo, defaultSchema, sessionInitSql);
     }
 
     @Override
@@ -57,7 +61,8 @@ public class DuckDBCatalogFactory implements CatalogFactory {
                         JdbcCommonOptions.PASSWORD,
                         JdbcCommonOptions.SCHEMA,
                         JdbcCommonOptions.DECIMAL_TYPE_NARROWING,
-                        JdbcCommonOptions.HANDLE_BLOB_AS_STRING)
+                        JdbcCommonOptions.HANDLE_BLOB_AS_STRING,
+                        DuckDbJdbcConnectionProvider.SESSION_INIT_SQL_OPTION)
                 .build();
     }
 }
