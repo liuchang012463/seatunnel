@@ -18,6 +18,8 @@
 package org.apache.seatunnel.connectors.seatunnel.jdbc.internal.dialect.duckdb;
 
 import org.apache.seatunnel.api.table.catalog.TablePath;
+import org.apache.seatunnel.connectors.seatunnel.jdbc.config.JdbcConnectionConfig;
+import org.apache.seatunnel.connectors.seatunnel.jdbc.internal.connection.JdbcConnectionProvider;
 import org.apache.seatunnel.connectors.seatunnel.jdbc.internal.converter.JdbcRowConverter;
 import org.apache.seatunnel.connectors.seatunnel.jdbc.internal.dialect.DatabaseIdentifier;
 import org.apache.seatunnel.connectors.seatunnel.jdbc.internal.dialect.JdbcDialect;
@@ -51,6 +53,18 @@ public class DuckDBDialect implements JdbcDialect {
     @Override
     public JdbcDialectTypeMapper getJdbcDialectTypeMapper() {
         return new DuckDBTypeMapper();
+    }
+
+    /**
+     * DuckDB is the only dialect that accepts an inline session init SQL. Returning a dedicated
+     * provider here keeps the shared {@link
+     * org.apache.seatunnel.connectors.seatunnel.jdbc.internal.connection.SimpleJdbcConnectionProvider}
+     * untouched for every other database.
+     */
+    @Override
+    public JdbcConnectionProvider getJdbcConnectionProvider(
+            JdbcConnectionConfig jdbcConnectionConfig) {
+        return new DuckDbJdbcConnectionProvider(jdbcConnectionConfig);
     }
 
     @Override
