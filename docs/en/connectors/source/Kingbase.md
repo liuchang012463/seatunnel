@@ -176,3 +176,5 @@ source {
 ## Changelog
 
 <ChangeLog />
+
+Kingbase `VARCHAR(n BYTE)` / `CHARACTER VARYING(n BYTE)` columns reported as `varcharbyte`, and `charbyte` / `bpcharbyte` columns, map to SeaTunnel `STRING` and preserve their declared length.

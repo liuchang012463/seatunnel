@@ -33,6 +33,36 @@ import org.junit.jupiter.api.Test;
 
 public class KingbaseTypeConverterTest {
     @Test
+    public void testByteLengthCharacterTypes() {
+        for (String type :
+                new String[] {
+                    "varcharbyte",
+                    "VARCHARBYTE",
+                    "charbyte",
+                    "bpcharbyte",
+                    "varchar byte",
+                    "character varying byte",
+                    "character byte"
+                }) {
+            BasicTypeDefine<Object> definition =
+                    BasicTypeDefine.builder()
+                            .name("id")
+                            .dataType(type)
+                            .columnType(type + "(32)")
+                            .length(32L)
+                            .nullable(false)
+                            .comment("byte length text")
+                            .build();
+            Column column = KingbaseTypeConverter.INSTANCE.convert(definition);
+            Assertions.assertEquals(BasicType.STRING_TYPE, column.getDataType(), type);
+            Assertions.assertEquals(32L, column.getColumnLength(), type);
+            Assertions.assertEquals(definition.getColumnType(), column.getSourceType(), type);
+            Assertions.assertFalse(column.isNullable(), type);
+            Assertions.assertEquals("byte length text", column.getComment(), type);
+        }
+    }
+
+    @Test
     public void testConvertUnsupported() {
         BasicTypeDefine<Object> typeDefine =
                 BasicTypeDefine.builder().name("test").columnType("aaa").dataType("aaa").build();

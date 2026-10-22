@@ -110,6 +110,15 @@ public class KingbaseTypeConverter extends PostgresTypeConverter {
                         builder.columnLength((long) (1024 * 1024 * 1024));
                     }
                     break;
+                    // Kingbase BYTE-length strings are reported with distinct JDBC type names.
+                    // They contain text, not binary data; preserve the declared byte length.
+                case "VARCHARBYTE":
+                case "CHARBYTE":
+                case "BPCHARBYTE":
+                case "VARCHAR BYTE":
+                case "CHAR BYTE":
+                case "CHARACTER VARYING BYTE":
+                case "CHARACTER BYTE":
                     // Text types not in PG (PG has TEXT/VARCHAR/CHAR)
                 case MySqlTypeConverter.MYSQL_TINYTEXT:
                 case MySqlTypeConverter.MYSQL_MEDIUMTEXT:

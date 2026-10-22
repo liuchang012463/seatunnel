@@ -176,3 +176,5 @@ source {
 ## 变更日志
 
 <ChangeLog />
+
+Kingbase `VARCHAR(n BYTE)` / `CHARACTER VARYING(n BYTE)` 字段在 JDBC 中报告为 `varcharbyte` 时，以及 `charbyte` / `bpcharbyte` 字段，映射为 SeaTunnel `STRING` 并保留声明长度。
