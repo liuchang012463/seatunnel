@@ -69,6 +69,8 @@ import ChangeLog from '../changelog/connector-jdbc.md';
 | DATE<br/>                                                                                        | DATE                                                                                                                                           |
 | 其他数据类型                                                                                     | 目前不支持                                                                                                                                    |
 
+从金仓目录元数据自动创建 PostgreSQL 表时，源端未声明长度的 `VARCHAR` 会建为 `TEXT`，不推断长度限制。`CREATE_SCHEMA_WHEN_NOT_EXIST` 不会修改已存在的目标字段。
+
 ## 选项
 
 | 名称                           | 类型      | 必填 |           默认            |                                                                                                                                                                                                                                                                                    描述                                                                                                                                                                                                                                                                                    |

@@ -84,7 +84,8 @@ public class KingbaseCatalog extends AbstractJdbcCatalog {
                     + "    format_type(a.atttypid, a.atttypmod) AS full_type_name,\n"
                     + "    CASE \n"
                     + "        WHEN a.atttypid IN (SELECT oid FROM sys_type WHERE typname IN ( 'CHAR','CHARACTER','VARCHAR','CHARACTER VARYING','BPCHAR') )\n"
-                    + "        THEN ABS(a.atttypmod)     \n"
+                    // A typmod of -1 means unbounded. ABS would turn it into a length of 1.
+                    + "        THEN ABS(NULLIF(a.atttypmod, -1))\n"
                     + "        WHEN a.atttypid IN (SELECT oid FROM sys_type WHERE typname IN ('NUMERIC', 'DECIMAL'))\n"
                     + "        THEN (a.atttypmod - 4) >> 16\n"
                     + "        WHEN a.atttypid IN (SELECT oid FROM sys_type WHERE typname IN ('INT', 'INTEGER', 'SMALLINT', 'BIGINT'))\n"

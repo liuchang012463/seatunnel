@@ -73,6 +73,8 @@ semantics (using XA transaction guarantee).
 | DATE<br/>                                                                                        | DATE                                                                                                                                           |
 | OTHER DATA TYPES                                                                                 | NOT SUPPORTED YET                                                                                                                              |
 
+When a PostgreSQL table is created from Kingbase catalog metadata, a source `VARCHAR` without a declared length is created as `TEXT`. This preserves strings without imposing an inferred length. `CREATE_SCHEMA_WHEN_NOT_EXIST` does not alter existing target columns.
+
 ## Options
 
 |                   Name                    |  Type   | Required |           Default            |                                                                                                                                                                                                                                                                                    Description                                                                                                                                                                                                                                                                                    |

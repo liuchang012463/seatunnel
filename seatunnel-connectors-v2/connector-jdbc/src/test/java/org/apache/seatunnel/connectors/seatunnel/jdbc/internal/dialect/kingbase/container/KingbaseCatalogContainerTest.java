@@ -24,6 +24,7 @@ import org.apache.seatunnel.api.table.catalog.PrimaryKey;
 import org.apache.seatunnel.api.table.catalog.TablePath;
 import org.apache.seatunnel.api.table.catalog.TableSchema;
 import org.apache.seatunnel.api.table.type.BasicType;
+import org.apache.seatunnel.connectors.seatunnel.jdbc.catalog.psql.PostgresCreateTableSqlBuilder;
 
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -71,6 +72,26 @@ public class KingbaseCatalogContainerTest extends AbstractKingbaseContainerTest 
                 String.format(
                         "DROP TABLE %s.%s",
                         quoteIdentifier(SCHEMA), quoteIdentifier(testTableName)));
+    }
+
+    @Test
+    public void testUnboundedVarcharCreatesUnboundedPostgresColumn() throws SQLException {
+        String sourceTableName = "test_unbounded_varchar";
+        String sourceTable = quoteIdentifier(SCHEMA) + "." + quoteIdentifier(sourceTableName);
+        TablePath sourcePath = TablePath.of(DATABASE, SCHEMA, sourceTableName);
+        TablePath targetPath = TablePath.of(DATABASE, SCHEMA, "test_unbounded_varchar_copy");
+
+        executeSql("CREATE TABLE " + sourceTable + " (\"BDFH\" VARCHAR NOT NULL)");
+        try {
+            CatalogTable source = catalog.getTable(sourcePath);
+            Column column = source.getTableSchema().getColumn("BDFH");
+            Assertions.assertEquals(BasicType.STRING_TYPE, column.getDataType());
+            Assertions.assertNull(column.getColumnLength());
+            String ddl = new PostgresCreateTableSqlBuilder(source, false).build(targetPath);
+            Assertions.assertTrue(ddl.contains("\"BDFH\" text NOT NULL"), ddl);
+        } finally {
+            executeSql("DROP TABLE " + sourceTable);
+        }
     }
 
     @Test
