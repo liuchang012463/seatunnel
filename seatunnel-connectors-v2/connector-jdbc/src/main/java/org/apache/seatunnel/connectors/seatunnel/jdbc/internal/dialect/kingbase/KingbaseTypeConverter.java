@@ -196,6 +196,10 @@ public class KingbaseTypeConverter extends PostgresTypeConverter {
                 case KB_TINYINT:
                     builder.dataType(BasicType.BYTE_TYPE);
                     break;
+                    // Kingbase OIDs are unsigned 32-bit values and do not fit in a signed int.
+                case "OID":
+                    builder.dataType(BasicType.LONG_TYPE);
+                    break;
                 case KB_MONEY:
                     builder.dataType(new DecimalType(38, 18));
                     builder.columnLength(38L);

@@ -63,6 +63,21 @@ public class KingbaseTypeConverterTest {
     }
 
     @Test
+    public void testConvertOidAsLong() {
+        BasicTypeDefine<Object> definition =
+                BasicTypeDefine.builder()
+                        .name("object_id")
+                        .dataType("oid")
+                        .columnType("oid")
+                        .nullable(false)
+                        .build();
+        Column column = KingbaseTypeConverter.INSTANCE.convert(definition);
+        Assertions.assertEquals(BasicType.LONG_TYPE, column.getDataType());
+        Assertions.assertEquals("oid", column.getSourceType());
+        Assertions.assertFalse(column.isNullable());
+    }
+
+    @Test
     public void testConvertUnsupported() {
         BasicTypeDefine<Object> typeDefine =
                 BasicTypeDefine.builder().name("test").columnType("aaa").dataType("aaa").build();
